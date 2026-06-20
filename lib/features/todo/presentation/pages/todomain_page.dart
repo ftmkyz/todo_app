@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../domain/todo.dart';
 import 'package:awesome_notifications/awesome_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class TodoPage extends StatefulWidget {
   const TodoPage({super.key});
@@ -16,21 +18,49 @@ class _TodoPageState extends State<TodoPage> {
   final List<Todo> _todos = [];
   final TextEditingController _controller = TextEditingController();
   DateTime? _selectedDeadline;
-  Priority _selectedPriority = Priority.medium;
+  Priority _selectedPriority = Priority.low;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTodos();
+  }
+
+  Future<void> _loadTodos() async {
+    final prefs = await SharedPreferences.getInstance();
+    final stored = prefs.getStringList('todos') ?? [];
+    setState(() {
+      _todos.clear();
+      _todos.addAll(stored.map((e) => Todo.fromJson(jsonDecode(e))));
+    });
+  }
+
+  Future<void> _saveTodos() async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = _todos.map((t) => jsonEncode(t.toJson())).toList();
+    await prefs.setStringList('todos', list);
+  }
 
   void _addTodo() {
-    if (_controller.text.trim().isNotEmpty && _selectedDeadline != null) {
+    if (_controller.text.trim().isNotEmpty) {
       final todo = Todo(
         title: _controller.text.trim(),
-        deadline: _selectedDeadline!,
-        priority: _selectedPriority,
+        deadline: _selectedDeadline ?? DateTime.now(), // deadline yoksa şu an
+        priority: _selectedPriority, // default low
       );
       setState(() => _todos.add(todo));
       _controller.clear();
       _selectedDeadline = null;
+      _selectedPriority = Priority.low; // her eklemeden sonra default low
 
+      _saveTodos();
       _scheduleNotification(todo);
     }
+  }
+
+  void _deleteTodo(int index) {
+    setState(() => _todos.removeAt(index));
+    _saveTodos(); // silince kaydet
   }
 
   void _scheduleNotification(Todo todo) {
@@ -39,7 +69,9 @@ class _TodoPageState extends State<TodoPage> {
     );
     AwesomeNotifications().createNotification(
       content: NotificationContent(
-        id: 1,
+        id: todo.deadline.millisecondsSinceEpoch.remainder(
+          100000,
+        ), // benzersiz ID
         channelKey: todo.priority == Priority.high
             ? 'high_priority_channel'
             : 'todo_channel',
@@ -52,18 +84,10 @@ class _TodoPageState extends State<TodoPage> {
         day: todo.deadline.day,
         hour: todo.deadline.hour,
         minute: todo.deadline.minute,
-        second: 0,
+        second: todo.deadline.second,
         repeats: false,
       ),
     );
-    AwesomeNotifications().listScheduledNotifications().then((scheduled) {
-      print('Planlanmış bildirimler:');
-      for (var notification in scheduled) {
-        print(
-          'ID: ${notification.content}, Title: ${notification.content}, Schedule: ${notification.schedule}',
-        );
-      }
-    });
   }
 
   Future<void> _pickDeadline() async {
@@ -92,10 +116,20 @@ class _TodoPageState extends State<TodoPage> {
     }
   }
 
+  Color _getPriorityColor(Priority priority) {
+    switch (priority) {
+      case Priority.low:
+        return Colors.green.shade50;
+      case Priority.medium:
+        return Colors.orange.shade50;
+      case Priority.high:
+        return Colors.red.shade50;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // appBar: AppBar(title: const Text("Todo List")),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -123,9 +157,9 @@ class _TodoPageState extends State<TodoPage> {
                             );
                           }).toList(),
                           onChanged: (val) {
-                            if (val != null)
-                              // ignore: curly_braces_in_flow_control_structures
+                            if (val != null) {
                               setState(() => _selectedPriority = val);
+                            }
                           },
                         ),
                         const SizedBox(width: 16),
@@ -163,16 +197,20 @@ class _TodoPageState extends State<TodoPage> {
                       itemBuilder: (context, index) {
                         final todo = _todos[index];
                         return Card(
+                          color: _getPriorityColor(todo.priority),
                           child: ListTile(
                             title: Text(todo.title),
                             subtitle: Text(
-                              "Deadline: ${DateFormat('dd/MM/yyyy HH:mm').format(todo.deadline)}\n"
-                              "Önem: ${todo.priority.name.toUpperCase()}",
+                              // ignore: prefer_interpolation_to_compose_strings
+                              (_selectedDeadline == null
+                                      ? "Deadline: Yok"
+                                      : "Deadline: ${DateFormat('dd/MM/yyyy HH:mm').format(todo.deadline)}") +
+                                  "\nÖnem: ${todo.priority.name.toUpperCase()}",
                             ),
                             trailing: IconButton(
                               icon: const Icon(Icons.delete, color: Colors.red),
                               onPressed: () =>
-                                  setState(() => _todos.removeAt(index)),
+                                  _deleteTodo(index), // 🔑 burada kullanılıyor
                             ),
                           ),
                         );
