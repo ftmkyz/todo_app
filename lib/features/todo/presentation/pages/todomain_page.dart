@@ -1,9 +1,9 @@
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously, avoid_print
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../../../shared/services/notification_service.dart';
 import '../../domain/todo.dart';
+import 'package:awesome_notifications/awesome_notifications.dart';
 
 class TodoPage extends StatefulWidget {
   const TodoPage({super.key});
@@ -29,18 +29,41 @@ class _TodoPageState extends State<TodoPage> {
       _controller.clear();
       _selectedDeadline = null;
 
-      // 🔔 Bildirim planlama (örnek)
       _scheduleNotification(todo);
     }
   }
 
   void _scheduleNotification(Todo todo) {
-    NotificationService.scheduleNotification(
-      id: _todos.length, // benzersiz id
-      title: "Görev Hatırlatma",
-      body: "${todo.title} (${todo.priority.name.toUpperCase()})",
-      scheduledTime: todo.deadline,
+    print(
+      'Bildirim planlanıyor: ${todo.title} için ${todo.deadline} tarihinde',
     );
+    AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: 1,
+        channelKey: todo.priority == Priority.high
+            ? 'high_priority_channel'
+            : 'todo_channel',
+        title: todo.title,
+        body: 'Deadline geldi!',
+      ),
+      schedule: NotificationCalendar(
+        year: todo.deadline.year,
+        month: todo.deadline.month,
+        day: todo.deadline.day,
+        hour: todo.deadline.hour,
+        minute: todo.deadline.minute,
+        second: 0,
+        repeats: false,
+      ),
+    );
+    AwesomeNotifications().listScheduledNotifications().then((scheduled) {
+      print('Planlanmış bildirimler:');
+      for (var notification in scheduled) {
+        print(
+          'ID: ${notification.content}, Title: ${notification.content}, Schedule: ${notification.schedule}',
+        );
+      }
+    });
   }
 
   Future<void> _pickDeadline() async {

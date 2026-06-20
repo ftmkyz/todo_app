@@ -1,10 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:todo_app/features/todo/presentation/pages/todomain_page.dart';
-import 'package:todo_app/shared/services/notification_service.dart';
+import 'package:awesome_notifications/awesome_notifications.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await NotificationService.init();
+  AwesomeNotifications().initialize(null, [
+    NotificationChannel(
+      channelKey: 'todo_channel',
+      channelName: 'Todo Notifications',
+      channelDescription: 'Deadline hatırlatmaları',
+      defaultColor: Colors.blue,
+      importance: NotificationImportance.High,
+    ),
+  ]);
+  bool isAllowed = await AwesomeNotifications().isNotificationAllowed();
+  if (!isAllowed) {
+    await AwesomeNotifications().requestPermissionToSendNotifications();
+  }
   runApp(const MyApp());
 }
 
