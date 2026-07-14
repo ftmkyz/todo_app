@@ -26,7 +26,7 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/icons/todoapp_icon.png"
-  adaptive_icon_background: "#FFFFFF"   # istediğin renk
+  adaptive_icon_background: "#00000000"  
   adaptive_icon_foreground: "assets/icons/todoapp_icon.png"
 
 flutter:
