@@ -1,19 +1,21 @@
 class Todo {
   final String title;
-  final DateTime deadline;
+  final DateTime? deadline;
   final Priority priority;
 
   Todo({required this.title, required this.deadline, required this.priority});
 
   Map<String, dynamic> toJson() => {
     'title': title,
-    'deadline': deadline.toIso8601String(),
+    'deadline': deadline?.toIso8601String(),
     'priority': priority.index,
   };
 
   factory Todo.fromJson(Map<String, dynamic> json) => Todo(
     title: json['title'],
-    deadline: DateTime.parse(json['deadline']),
+    deadline: (json['deadline'] != null && json['deadline'] != '')
+        ? DateTime.parse(json['deadline'])
+        : null,
     priority: Priority.values[json['priority']],
   );
 }

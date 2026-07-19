@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously, avoid_print
+// ignore_for_file: use_build_context_synchronously, avoid_print, unnecessary_null_comparison
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -45,16 +45,21 @@ class _TodoPageState extends State<TodoPage> {
     if (_controller.text.trim().isNotEmpty) {
       final todo = Todo(
         title: _controller.text.trim(),
-        deadline: _selectedDeadline ?? DateTime.now(), // deadline yoksa şu an
+        //deadline: _selectedDeadline ?? DateTime.now(), // deadline yoksa şu an
+        deadline: _selectedDeadline, // deadline yoksa şu an
         priority: _selectedPriority, // default low
       );
       setState(() => _todos.add(todo));
       _controller.clear();
-      _selectedDeadline = null;
+      // _selectedDeadline = null;
       _selectedPriority = Priority.low; // her eklemeden sonra default low
-
+      print(
+        'test: ${todo.title}, ${todo.deadline}, ${todo.priority}, ${_selectedDeadline}',
+      );
       _saveTodos();
-      _scheduleNotification(todo);
+      if (todo.deadline != null && todo.deadline!.isAfter(DateTime.now())) {
+        _scheduleNotification(todo);
+      }
     }
   }
 
@@ -69,7 +74,7 @@ class _TodoPageState extends State<TodoPage> {
     );
     AwesomeNotifications().createNotification(
       content: NotificationContent(
-        id: todo.deadline.millisecondsSinceEpoch.remainder(
+        id: todo.deadline!.millisecondsSinceEpoch.remainder(
           100000,
         ), // benzersiz ID
         channelKey: todo.priority == Priority.high
@@ -79,12 +84,12 @@ class _TodoPageState extends State<TodoPage> {
         body: 'Deadline geldi!',
       ),
       schedule: NotificationCalendar(
-        year: todo.deadline.year,
-        month: todo.deadline.month,
-        day: todo.deadline.day,
-        hour: todo.deadline.hour,
-        minute: todo.deadline.minute,
-        second: todo.deadline.second,
+        year: todo.deadline!.year,
+        month: todo.deadline!.month,
+        day: todo.deadline!.day,
+        hour: todo.deadline!.hour,
+        minute: todo.deadline!.minute,
+        second: 0,
         repeats: false,
       ),
     );
@@ -201,12 +206,10 @@ class _TodoPageState extends State<TodoPage> {
                           child: ListTile(
                             title: Text(todo.title),
                             subtitle: Text(
-                              // ignore: prefer_interpolation_to_compose_strings
-                              (_selectedDeadline == null
-                                      ? "Deadline: Yok"
-                                      : "Deadline: ${DateFormat('dd/MM/yyyy HH:mm').format(todo.deadline)}") +
-                                  "\nÖnem: ${todo.priority.name.toUpperCase()}",
+                              "Deadline: ${todo.deadline == null ? 'Yok' : DateFormat('dd/MM/yyyy HH:mm').format(todo.deadline!)}\n"
+                              "Önem: ${todo.priority.name.toUpperCase()}",
                             ),
+
                             trailing: IconButton(
                               icon: const Icon(Icons.delete, color: Colors.red),
                               onPressed: () =>
